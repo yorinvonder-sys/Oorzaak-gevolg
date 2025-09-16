@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geschiedenis Spel: Oorzaak & Gevolg</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: none; /* Prevents scrolling on touch devices when dragging */
+        }
+        .draggable-item.dragging {
+            opacity: 0.5;
+            transform: scale(1.05);
+        }
+        .drop-container.drag-over, #draggable-list.drag-over {
+            border-style: dashed;
+            border-color: #2563eb; /* blue-600 */
+            background-color: #eff6ff; /* blue-50 */
+        }
+        .feedback {
+            transition: opacity 0.5s ease-in-out;
+        }
+        /* Custom styles for the correct/incorrect feedback */
+        .correct-answer {
+            border: 2px solid #16a34a; /* green-600 */
+            background-color: #f0fdf4; /* green-50 */
+        }
+        .incorrect-answer {
+            border: 2px solid #dc2626; /* red-600 */
+            background-color: #fef2f2; /* red-50 */
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen p-4">
+
+    <div id="app-container" class="w-full max-w-5xl mx-auto">
+        
+        <header class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-700">Oorzaak & Gevolg</h1>
+            <p class="text-slate-500 mt-1">Koppel de juiste historische gebeurtenissen aan elkaar.</p>
+        </header>
+        
+        <!-- Topic Selection Screen -->
+        <div id="topic-selection" class="bg-white p-8 rounded-xl shadow-lg text-center">
+            <h2 class="text-2xl font-semibold mb-4">Kies een Opdracht</h2>
+            <div id="topic-buttons" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Buttons will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-board" class="hidden">
+            <h2 id="game-title" class="text-2xl font-semibold text-center mb-6"></h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Left Column -->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 id="left-column-title" class="text-xl font-bold mb-4 text-center"></h3>
+                    <div id="draggable-list" class="space-y-3 min-h-[200px] p-2 rounded-lg transition-colors">
+                        <!-- Draggable items will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 id="right-column-title" class="text-xl font-bold mb-4 text-center"></h3>
+                    <div id="drop-list" class="space-y-3 min-h-[200px]">
+                        <!-- Droppable containers will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feedback and Controls -->
+            <div class="mt-6 text-center">
+                <div id="feedback-message" class="feedback h-6 mb-4 text-lg font-semibold opacity-0"></div>
+                <div class="flex justify-center gap-4 flex-wrap">
+                    <button id="check-button" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition-colors shadow-md">Controleer Antwoorden</button>
+                    <button id="reset-button" class="bg-slate-500 text-white font-bold py-3 px-8 rounded-lg hover:bg-slate-600 transition-colors shadow-md">Kies andere opdracht</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const gameData = {
+            'ned-cause-effect': {
+                title: 'Nederland (1848-1914): Oorzaak naar Gevolg',
+                mode: 'causeToEffect',
+                pairs: [
+                    { id: 1, cause: 'Onrust en revoluties in heel Europa in 1848.', effect: 'Koning Willem II geeft Thorbecke opdracht voor een nieuwe, liberale grondwet.' },
+                    { id: 2, cause: 'Opkomst van fabrieken zorgt voor slechte werk- en leefomstandigheden.', effect: 'De \'sociale kwestie\' wordt een belangrijk politiek onderwerp.' },
+                    { id: 3, cause: 'De schoolstrijd en de kiesrechtkwestie verdelen de samenleving.', effect: 'Er ontstaan politieke partijen en de verzuiling begint.' },
+                    { id: 4, cause: 'Feministes strijden voor gelijke rechten voor vrouwen.', effect: 'De strijd voor vrouwenkiesrecht komt op gang.' },
+                    { id: 5, cause: 'De Industriële Revolutie leidt tot een trek naar de stad.', effect: 'Er vindt een sterke urbanisatie (verstedelijking) plaats.' },
+                    { id: 6, cause: 'Het censuskiesrecht wordt ingevoerd.', effect: 'Alleen de rijke burgers die genoeg belasting betalen, mogen stemmen.' }
+                ]
+            },
+            'ned-effect-cause': {
+                title: 'Nederland (1848-1914): Gevolg naar Oorzaak',
+                mode: 'effectToCause',
+                pairs: [
+                    { id: 1, cause: 'Onrust en revoluties in heel Europa in 1848.', effect: 'Koning Willem II geeft Thorbecke opdracht voor een nieuwe, liberale grondwet.' },
+                    { id: 2, cause: 'Opkomst van fabrieken zorgt voor slechte werk- en leefomstandigheden.', effect: 'De \'sociale kwestie\' wordt een belangrijk politiek onderwerp.' },
+                    { id: 3, cause: 'De schoolstrijd en de kiesrechtkwestie verdelen de samenleving.', effect: 'Er ontstaan politieke partijen en de verzuiling begint.' },
+                    { id: 4, cause: 'Feministes strijden voor gelijke rechten voor vrouwen.', effect: 'De strijd voor vrouwenkiesrecht komt op gang.' },
+                    { id: 5, cause: 'De Industriële Revolutie leidt tot een trek naar de stad.', effect: 'Er vindt een sterke urbanisatie (verstedelijking) plaats.' },
+                    { id: 6, cause: 'Het censuskiesrecht wordt ingevoerd.', effect: 'Alleen de rijke burgers die genoeg belasting betalen, mogen stemmen.' }
+                ]
+            },
+            'ww-cause-effect': {
+                title: 'Wereldoorlogen & Interbellum: Oorzaak naar Gevolg',
+                mode: 'causeToEffect',
+                pairs: [
+                    { id: 7, cause: 'De moord op Frans Ferdinand in Sarajevo.', effect: 'De Eerste Wereldoorlog begint.' },
+                    { id: 8, cause: 'Duitsland is ontevreden over de Vrede van Versailles.', effect: 'De opkomst van Hitler en het nationaalsocialisme wordt gevoed.' },
+                    { id: 9, cause: 'De beurskrach in de Verenigde Staten in 1929.', effect: 'Een wereldwijde economische crisis breekt uit.' },
+                    { id: 10, cause: 'Het Von Schlieffenplan mislukt.', effect: 'Het Westfront verandert in een uitzichtloze loopgravenoorlog.' },
+                    { id: 11, cause: 'Duitsland valt Polen binnen in 1939.', effect: 'Engeland en Frankrijk verklaren Duitsland de oorlog; WOII begint.' },
+                    { id: 12, cause: 'Japan valt Pearl Harbor aan.', effect: 'De Verenigde Staten nemen deel aan de Tweede Wereldoorlog.' }
+                ]
+            },
+             'ww-effect-cause': {
+                title: 'Wereldoorlogen & Interbellum: Gevolg naar Oorzaak',
+                mode: 'effectToCause',
+                 pairs: [
+                    { id: 7, cause: 'De moord op Frans Ferdinand in Sarajevo.', effect: 'De Eerste Wereldoorlog begint.' },
+                    { id: 8, cause: 'Duitsland is ontevreden over de Vrede van Versailles.', effect: 'De opkomst van Hitler en het nationaalsocialisme wordt gevoed.' },
+                    { id: 9, cause: 'De beurskrach in de Verenigde Staten in 1929.', effect: 'Een wereldwijde economische crisis breekt uit.' },
+                    { id: 10, cause: 'Het Von Schlieffenplan mislukt.', effect: 'Het Westfront verandert in een uitzichtloze loopgravenoorlog.' },
+                    { id: 11, cause: 'Duitsland valt Polen binnen in 1939.', effect: 'Engeland en Frankrijk verklaren Duitsland de oorlog; WOII begint.' },
+                    { id: 12, cause: 'Japan valt Pearl Harbor aan.', effect: 'De Verenigde Staten nemen deel aan de Tweede Wereldoorlog.' }
+                ]
+            },
+            'eu-cause-effect': {
+                title: 'Koude Oorlog (1945-1989): Oorzaak naar Gevolg',
+                mode: 'causeToEffect',
+                pairs: [
+                    { id: 13, cause: 'Angst voor de verspreiding van het communisme.', effect: 'Oprichting van de NAVO als militair bondgenootschap.' },
+                    { id: 14, cause: 'Indonesië roept de onafhankelijkheid uit.', effect: 'Nederland voert twee \'politionele acties\' uit.' },
+                    { id: 15, cause: 'Groeiende welvaart en ontkerkelijking in de jaren \'60.', effect: 'Jongerenculturen ontstaan en de ontzuiling zet door.' },
+                    { id: 16, cause: 'Michail Gorbatsjov introduceert Glasnost en Perestrojka.', effect: 'De Berlijnse Muur valt in 1989.' },
+                    { id: 17, cause: 'De Sovjet-Unie blokkeert West-Berlijn.', effect: 'De VS en Groot-Brittannië organiseren een luchtbrug.' },
+                    { id: 18, cause: 'De plaatsing van Sovjet-raketten op Cuba.', effect: 'De wereld balanceert op de rand van een kernoorlog (Cubacrisis).' }
+                ]
+            },
+            'eu-effect-cause': {
+                title: 'Koude Oorlog (1945-1989): Gevolg naar Oorzaak',
+                mode: 'effectToCause',
+                pairs: [
+                    { id: 13, cause: 'Angst voor de verspreiding van het communisme.', effect: 'Oprichting van de NAVO als militair bondgenootschap.' },
+                    { id: 14, cause: 'Indonesië roept de onafhankelijkheid uit.', effect: 'Nederland voert twee \'politionele acties\' uit.' },
+                    { id: 15, cause: 'Groeiende welvaart en ontkerkelijking in de jaren \'60.', effect: 'Jongerenculturen ontstaan en de ontzuiling zet door.' },
+                    { id: 16, cause: 'Michail Gorbatsjov introduceert Glasnost en Perestrojka.', effect: 'De Berlijnse Muur valt in 1989.' },
+                    { id: 17, cause: 'De Sovjet-Unie blokkeert West-Berlijn.', effect: 'De VS en Groot-Brittannië organiseren een luchtbrug.' },
+                    { id: 18, cause: 'De plaatsing van Sovjet-raketten op Cuba.', effect: 'De wereld balanceert op de rand van een kernoorlog (Cubacrisis).' }
+                ]
+            }
+        };
+
+        const topicSelectionDiv = document.getElementById('topic-selection');
+        const gameBoardDiv = document.getElementById('game-board');
+        const draggableList = document.getElementById('draggable-list');
+        const dropList = document.getElementById('drop-list');
+        const checkButton = document.getElementById('check-button');
+        const resetButton = document.getElementById('reset-button');
+        const feedbackMessage = document.getElementById('feedback-message');
+        const gameTitle = document.getElementById('game-title');
+        const topicButtonsContainer = document.getElementById('topic-buttons');
+        const leftColumnTitle = document.getElementById('left-column-title');
+        const rightColumnTitle = document.getElementById('right-column-title');
+
+        let checked = false;
+        let initialDraggableOrder = []; // To store original order of draggable items
+
+        function shuffle(array) {
+            return [...array].sort(() => Math.random() - 0.5);
+        }
+
+        function createTopicButtons() {
+            Object.keys(gameData).forEach(topicKey => {
+                const topic = gameData[topicKey];
+                const button = document.createElement('button');
+                button.className = 'bg-blue-500 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-600 transition-colors shadow text-left';
+                button.innerHTML = `<span class="font-bold">${topic.title.split(':')[0]}</span><br><span class="text-sm font-normal">${topic.title.split(':')[1]}</span>`;
+                button.dataset.topic = topicKey;
+                button.addEventListener('click', () => startGame(topicKey));
+                topicButtonsContainer.appendChild(button);
+            });
+        }
+        
+        function startGame(topicKey) {
+            const currentTopic = gameData[topicKey];
+            const mode = currentTopic.mode;
+            checked = false;
+
+            topicSelectionDiv.classList.add('hidden');
+            gameBoardDiv.classList.remove('hidden');
+            gameTitle.textContent = currentTopic.title;
+
+            leftColumnTitle.textContent = (mode === 'causeToEffect') ? 'Oorzaak' : 'Gevolg';
+            rightColumnTitle.textContent = (mode === 'causeToEffect') ? 'Gevolg' : 'Oorzaak';
+
+            draggableList.innerHTML = '';
+            dropList.innerHTML = '';
+            feedbackMessage.textContent = '';
+            feedbackMessage.style.opacity = 0;
+
+            const shuffledPairs = shuffle(currentTopic.pairs);
+            const shuffledDropPairs = shuffle(currentTopic.pairs);
+
+            shuffledPairs.forEach(pair => {
+                const draggableText = (mode === 'causeToEffect') ? pair.cause : pair.effect;
+                const itemEl = document.createElement('div');
+                itemEl.id = `item-${pair.id}`;
+                itemEl.className = 'draggable-item bg-amber-100 p-4 rounded-lg cursor-grab border-2 border-amber-200';
+                itemEl.draggable = true;
+                itemEl.textContent = draggableText;
+                itemEl.addEventListener('dragstart', handleDragStart);
+                itemEl.addEventListener('dragend', handleDragEnd);
+                draggableList.appendChild(itemEl);
+            });
+            
+            // Store the initial order of the created elements
+            initialDraggableOrder = Array.from(draggableList.children);
+
+            shuffledDropPairs.forEach(pair => {
+                const dropZoneText = (mode === 'causeToEffect') ? pair.effect : pair.cause;
+                const dropContainer = document.createElement('div');
+                dropContainer.id = `drop-container-${pair.id}`;
+                dropContainer.dataset.correctItemId = `item-${pair.id}`;
+                dropContainer.className = 'drop-container bg-slate-100 p-4 rounded-lg border-2 border-slate-200 min-h-[80px] flex flex-col justify-center';
+                
+                const textEl = document.createElement('p');
+                textEl.className = 'font-semibold text-slate-600';
+                textEl.textContent = dropZoneText;
+                
+                const dropZone = document.createElement('div');
+                dropZone.className = 'drop-zone min-h-[60px] bg-slate-50 rounded-md border-2 border-dashed border-slate-300 transition-colors p-2';
+                dropZone.addEventListener('dragover', e => e.preventDefault());
+                dropZone.addEventListener('dragenter', handleDragEnter);
+                dropZone.addEventListener('dragleave', handleDragLeave);
+                dropZone.addEventListener('drop', handleDrop);
+                
+                // Change order based on game mode for logical layout
+                if (mode === 'causeToEffect') {
+                    textEl.classList.add('mt-2');
+                    dropContainer.appendChild(dropZone); // Draggable item comes first
+                    dropContainer.appendChild(textEl);
+                } else { // effectToCause
+                    textEl.classList.add('mb-2');
+                    dropContainer.appendChild(textEl);
+                    dropContainer.appendChild(dropZone); // Draggable item comes second
+                }
+
+                dropList.appendChild(dropContainer);
+            });
+
+            // Allow items to be dropped back into the list
+            draggableList.addEventListener('dragover', e => e.preventDefault());
+            draggableList.addEventListener('dragenter', () => draggableList.classList.add('drag-over'));
+            draggableList.addEventListener('dragleave', () => draggableList.classList.remove('drag-over'));
+            draggableList.addEventListener('drop', e => {
+                if (checked) return;
+                e.preventDefault();
+                draggableList.classList.remove('drag-over');
+                const itemId = e.dataTransfer.getData('text/plain');
+                const draggedItem = document.getElementById(itemId);
+
+                // Add the item back to the list temporarily
+                draggableList.appendChild(draggedItem);
+
+                // Get all items currently in the list and sort them
+                const itemsToSort = Array.from(draggableList.children);
+                itemsToSort.sort((a, b) => {
+                    const indexA = initialDraggableOrder.findIndex(node => node.id === a.id);
+                    const indexB = initialDraggableOrder.findIndex(node => node.id === b.id);
+                    return indexA - indexB;
+                });
+                
+                // Re-append the items in their original, sorted order
+                itemsToSort.forEach(item => draggableList.appendChild(item));
+            });
+        }
+
+        function handleDragStart(e) {
+            if (checked) return;
+            e.target.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', e.target.id);
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+        }
+
+        function handleDragEnter(e) {
+            if (checked) return;
+            e.preventDefault();
+            const container = e.target.closest('.drop-container');
+            if (container) {
+                container.classList.add('drag-over');
+            }
+        }
+
+        function handleDragLeave(e) {
+            const container = e.target.closest('.drop-container');
+            if (container) {
+                container.classList.remove('drag-over');
+            }
+        }
+        
+        function handleDrop(e) {
+            if (checked) return;
+            e.preventDefault();
+            const dropZone = e.target.closest('.drop-zone');
+            if (!dropZone) return;
+
+            dropZone.closest('.drop-container').classList.remove('drag-over');
+            const itemId = e.dataTransfer.getData('text/plain');
+            const draggedItem = document.getElementById(itemId);
+            const originalParent = draggedItem.parentElement;
+
+            const existingItem = dropZone.querySelector('.draggable-item');
+            
+            dropZone.appendChild(draggedItem);
+
+            if (existingItem) {
+                originalParent.appendChild(existingItem);
+            }
+        }
+
+        function checkAnswers() {
+            if (checked) return;
+            let allCorrect = true;
+            let answeredCount = 0;
+            const dropContainers = dropList.querySelectorAll('.drop-container');
+
+            dropContainers.forEach(container => {
+                const dropZone = container.querySelector('.drop-zone');
+                const correctItemId = container.dataset.correctItemId;
+                const placedItem = dropZone.querySelector('.draggable-item');
+                
+                container.classList.remove('correct-answer', 'incorrect-answer');
+                
+                if (placedItem) {
+                    answeredCount++;
+                    if (placedItem.id === correctItemId) {
+                        container.classList.add('correct-answer');
+                    } else {
+                        container.classList.add('incorrect-answer');
+                        allCorrect = false;
+                    }
+                } else {
+                    allCorrect = false;
+                }
+            });
+            
+            feedbackMessage.style.opacity = 1;
+            if (answeredCount < dropContainers.length) {
+                 feedbackMessage.textContent = 'Sleep alle kaartjes naar een antwoordvak.';
+                 feedbackMessage.className = 'feedback h-6 mb-4 text-lg font-semibold text-orange-600';
+            } else {
+                checked = true;
+                if (allCorrect) {
+                    feedbackMessage.textContent = 'Uitstekend! Alle antwoorden zijn goed!';
+                    feedbackMessage.className = 'feedback h-6 mb-4 text-lg font-semibold text-green-600';
+                } else {
+                    feedbackMessage.textContent = 'Bijna! Controleer de rood gemarkeerde antwoorden.';
+                    feedbackMessage.className = 'feedback h-6 mb-4 text-lg font-semibold text-red-600';
+                }
+            }
+        }
+
+        function resetToTopics() {
+            gameBoardDiv.classList.add('hidden');
+            topicSelectionDiv.classList.remove('hidden');
+        }
+
+        checkButton.addEventListener('click', checkAnswers);
+        resetButton.addEventListener('click', resetToTopics);
+
+        createTopicButtons();
+    </script>
+</body>
+</html>
+
+
+
+
